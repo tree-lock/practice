@@ -173,9 +173,6 @@ function QuestionPanel({
               gap="2"
               className="border-t border-[#eef2f7] pt-2.5"
             >
-              <Text size="1" color="gray">
-                Agent 目录建议
-              </Text>
               <Flex gap="2" align="center" className="w-full">
                 <Select.Root
                   value={selectedCatalogActionId ?? undefined}

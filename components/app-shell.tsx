@@ -177,12 +177,12 @@ export function AppShell({
                       key={topic.id}
                       layout="text"
                       isActive={pathname === `/dashboard/topics/${topic.id}`}
-                      onClick={() =>
-                        router.push(`/dashboard/topics/${topic.id}`)
-                      }
+                      asChild
                       className="pl-3"
                     >
-                      <Text size="2">{topic.name}</Text>
+                      <Link href={`/dashboard/topics/${topic.id}`}>
+                        <Text size="2">{topic.name}</Text>
+                      </Link>
                     </GhostButton>
                   ))}
                 </Flex>

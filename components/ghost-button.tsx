@@ -28,10 +28,10 @@ export function GhostButton({
   ...props
 }: GhostButtonProps) {
   const base =
-    "m-0 inline-flex cursor-pointer items-center justify-center gap-2.5 rounded-md border-none bg-transparent p-0 text-gray-700 transition-colors hover:bg-gray-200 active:bg-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-50";
-  const activeClass = isActive
-    ? "bg-gray-300 hover:bg-gray-300 active:bg-gray-400"
-    : "";
+    "m-0 inline-flex items-center justify-center gap-2.5 rounded-md border-none p-0 text-gray-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-50";
+  const stateClasses = isActive
+    ? "bg-blue-200 cursor-default"
+    : "bg-transparent cursor-pointer hover:bg-gray-200 active:bg-gray-300";
 
   const layoutClasses = {
     icon: "h-7 w-7 shrink-0 p-1",
@@ -41,7 +41,7 @@ export function GhostButton({
   };
 
   const mergedClassName =
-    `${base} ${layoutClasses[layout]} ${activeClass} ${className}`.trim();
+    `${base} ${layoutClasses[layout]} ${stateClasses} ${className}`.trim();
 
   if (asChild && React.Children.count(children) === 1) {
     const child = React.Children.only(children) as React.ReactElement<{
