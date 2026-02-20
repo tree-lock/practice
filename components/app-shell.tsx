@@ -3,9 +3,20 @@
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  FilePlusIcon,
   GearIcon,
+  PlusIcon,
 } from "@radix-ui/react-icons";
-import { Avatar, Box, Flex, Heading, IconButton, Text } from "@radix-ui/themes";
+import {
+  Avatar,
+  Box,
+  Flex,
+  Heading,
+  IconButton,
+  Text,
+  TextField,
+} from "@radix-ui/themes";
+import Link from "next/link";
 import { useState } from "react";
 
 type AppShellProps = {
@@ -26,6 +37,26 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [isCreatingDir, setIsCreatingDir] = useState(false);
+  const [newDirName, setNewDirName] = useState("");
+
+  const handleCreateDir = () => {
+    if (newDirName.trim()) {
+      // TODO: 实现创建目录逻辑
+      console.log("创建目录:", newDirName);
+      setNewDirName("");
+      setIsCreatingDir(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleCreateDir();
+    } else if (e.key === "Escape") {
+      setIsCreatingDir(false);
+      setNewDirName("");
+    }
+  };
 
   return (
     <Box style={{ minHeight: "100vh", background: "#f3f3f5" }}>
@@ -65,6 +96,51 @@ export function AppShell({
               >
                 {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
               </IconButton>
+            </Flex>
+
+            <Flex direction="column" gap="2">
+              <Link href="/" style={{ textDecoration: "none" }}>
+                <IconButton
+                  variant="ghost"
+                  color="gray"
+                  size="3"
+                  style={{ width: "100%", justifyContent: "flex-start" }}
+                  aria-label="新增题目"
+                >
+                  <FilePlusIcon />
+                  {!collapsed && <Text size="2">新增题目</Text>}
+                </IconButton>
+              </Link>
+
+              {isCreatingDir && !collapsed ? (
+                <TextField.Root
+                  size="2"
+                  value={newDirName}
+                  onChange={(e) => setNewDirName(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onBlur={() => {
+                    if (!newDirName.trim()) {
+                      setIsCreatingDir(false);
+                    }
+                  }}
+                  placeholder="输入目录名称..."
+                  autoFocus
+                  style={{ width: "100%" }}
+                />
+              ) : (
+                <IconButton
+                  variant="ghost"
+                  color="gray"
+                  size="3"
+                  onClick={() => !collapsed && setIsCreatingDir(true)}
+                  disabled={collapsed}
+                  style={{ width: "100%", justifyContent: "flex-start" }}
+                  aria-label="新建目录"
+                >
+                  <PlusIcon />
+                  {!collapsed && <Text size="2">新建目录</Text>}
+                </IconButton>
+              )}
             </Flex>
           </Flex>
         </Box>

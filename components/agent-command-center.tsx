@@ -10,9 +10,9 @@ import {
   Pencil2Icon,
   PlusIcon,
 } from "@radix-ui/react-icons";
-import { Badge, Flex, IconButton, Text } from "@radix-ui/themes";
+import { Flex, IconButton, Select, Text, TextField } from "@radix-ui/themes";
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
@@ -26,6 +26,31 @@ type UploadFileItem = {
 
 type GenerateStatus = "idle" | "generating" | "done" | "stopped";
 
+type CatalogActionType = "save-existing" | "create-new";
+
+type CatalogActionOption = {
+  id: string;
+  type: CatalogActionType;
+  optionLabel: string;
+  suggestion: string;
+};
+
+type QuestionMarkdownContentProps = {
+  questionMarkdown: string;
+};
+
+const QuestionMarkdownContent = memo(function QuestionMarkdownContent({
+  questionMarkdown,
+}: QuestionMarkdownContentProps) {
+  return (
+    <div style={{ lineHeight: 1.65 }}>
+      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+        {questionMarkdown}
+      </ReactMarkdown>
+    </div>
+  );
+});
+
 type QuestionPanelProps = {
   generateStatus: GenerateStatus;
   questionMarkdown: string;
@@ -36,6 +61,15 @@ type QuestionPanelProps = {
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onSaveEdit: () => void;
+  catalogOptions: Array<CatalogActionOption>;
+  existingCatalogCandidates: Array<string>;
+  selectedCatalogActionId: string | null;
+  selectedExistingCatalog: string;
+  newCatalogInput: string;
+  onSelectCatalogAction: (id: string) => void;
+  onSelectExistingCatalog: (value: string) => void;
+  onNewCatalogInputChange: (value: string) => void;
+  onConfirmCatalogAction: () => void;
 };
 
 function QuestionPanel({
@@ -48,7 +82,24 @@ function QuestionPanel({
   onStartEdit,
   onCancelEdit,
   onSaveEdit,
+  catalogOptions,
+  existingCatalogCandidates,
+  selectedCatalogActionId,
+  selectedExistingCatalog,
+  newCatalogInput,
+  onSelectCatalogAction,
+  onSelectExistingCatalog,
+  onNewCatalogInputChange,
+  onConfirmCatalogAction,
 }: QuestionPanelProps) {
+  const selectedCatalogOption =
+    catalogOptions.find((option) => option.id === selectedCatalogActionId) ??
+    null;
+  const effectiveCatalogValue =
+    selectedCatalogOption?.type === "save-existing"
+      ? selectedExistingCatalog
+      : newCatalogInput;
+
   return (
     <Flex direction="column" gap="2" style={{ padding: "12px 14px" }}>
       <Flex justify="between" align="center">
@@ -155,19 +206,135 @@ function QuestionPanel({
               }}
             />
           ) : (
-            <div style={{ lineHeight: 1.65 }}>
-              <ReactMarkdown
-                remarkPlugins={[remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-              >
-                {questionMarkdown}
-              </ReactMarkdown>
-            </div>
+            <QuestionMarkdownContent questionMarkdown={questionMarkdown} />
           )}
+          {!isEditing && catalogOptions.length > 0 ? (
+            <Flex
+              direction="column"
+              gap="2"
+              style={{
+                marginTop: 4,
+                paddingTop: 10,
+                borderTop: "1px solid #eef2f7",
+              }}
+            >
+              <Text size="1" color="gray">
+                Agent 目录建议
+              </Text>
+              <Flex gap="2" wrap="wrap" align="center">
+                <Select.Root
+                  value={selectedCatalogActionId ?? undefined}
+                  onValueChange={onSelectCatalogAction}
+                  size="1"
+                >
+                  <Select.Trigger
+                    aria-label="选择目录操作"
+                    placeholder="选择目录操作"
+                    style={{ minWidth: 150 }}
+                  />
+                  <Select.Content position="popper">
+                    {catalogOptions.map((option) => (
+                      <Select.Item key={option.id} value={option.id}>
+                        {option.optionLabel}
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select.Root>
+                {selectedCatalogOption?.type === "save-existing" ? (
+                  <div style={{ flex: 1, minWidth: 210 }}>
+                    <Select.Root
+                      value={selectedExistingCatalog || undefined}
+                      onValueChange={onSelectExistingCatalog}
+                      size="1"
+                    >
+                      <Select.Trigger
+                        aria-label="选择已有目录"
+                        placeholder="选择已有目录"
+                        style={{ width: "100%" }}
+                      />
+                      <Select.Content position="popper">
+                        {existingCatalogCandidates.map((catalog) => (
+                          <Select.Item key={catalog} value={catalog}>
+                            {catalog}
+                          </Select.Item>
+                        ))}
+                      </Select.Content>
+                    </Select.Root>
+                  </div>
+                ) : (
+                  <TextField.Root
+                    size="1"
+                    aria-label="目录名称"
+                    value={newCatalogInput}
+                    onChange={(event) =>
+                      onNewCatalogInputChange(event.target.value)
+                    }
+                    placeholder="输入目录名称"
+                    style={{ flex: 1, minWidth: 210 }}
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={onConfirmCatalogAction}
+                  disabled={
+                    !selectedCatalogActionId || !effectiveCatalogValue.trim()
+                  }
+                  aria-label="确认目录方案"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    border: "none",
+                    borderRadius: "50%",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background:
+                      selectedCatalogActionId && effectiveCatalogValue.trim()
+                        ? "#2563eb"
+                        : "#93c5fd",
+                    color: "#fff",
+                    opacity:
+                      selectedCatalogActionId && effectiveCatalogValue.trim()
+                        ? 1
+                        : 0.7,
+                    boxShadow:
+                      selectedCatalogActionId && effectiveCatalogValue.trim()
+                        ? "0 4px 10px rgba(37, 99, 235, 0.28)"
+                        : "none",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <CheckIcon width={14} height={14} />
+                </button>
+              </Flex>
+            </Flex>
+          ) : null}
         </Flex>
       ) : null}
     </Flex>
   );
+}
+
+function buildCatalogActions(
+  catalogs: Array<string>,
+): Array<CatalogActionOption> {
+  const existing = catalogs[0] ?? "通用复习/默认目录";
+  const base = existing.split("/")[0] ?? "通用复习";
+  const created = `${base}/新建目录`;
+  return [
+    {
+      id: `existing-${existing}`,
+      type: "save-existing",
+      optionLabel: "存到已有目录",
+      suggestion: existing,
+    },
+    {
+      id: `create-${created}`,
+      type: "create-new",
+      optionLabel: "新建目录并存入",
+      suggestion: created,
+    },
+  ];
 }
 
 export function AgentCommandCenter() {
@@ -177,21 +344,24 @@ export function AgentCommandCenter() {
   const [isMaximized, setIsMaximized] = useState(false);
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>("idle");
   const [questionMarkdown, setQuestionMarkdown] = useState("");
-  const [recommendedCatalog, setRecommendedCatalog] = useState<Array<string>>(
-    [],
-  );
-  const [generatedCatalog, setGeneratedCatalog] = useState<Array<string>>([]);
-  const [isCatalogGenerating, setIsCatalogGenerating] = useState(false);
+  const [catalogOptions, setCatalogOptions] = useState<
+    Array<CatalogActionOption>
+  >([]);
+  const [existingCatalogCandidates, setExistingCatalogCandidates] = useState<
+    Array<string>
+  >([]);
+  const [selectedCatalogActionId, setSelectedCatalogActionId] = useState<
+    string | null
+  >(null);
+  const [selectedExistingCatalog, setSelectedExistingCatalog] = useState("");
+  const [newCatalogInput, setNewCatalogInput] = useState("");
   const [isEditingQuestion, setIsEditingQuestion] = useState(false);
-  const [isEditingCatalog, setIsEditingCatalog] = useState(false);
   const [questionDraft, setQuestionDraft] = useState("");
-  const [catalogDraft, setCatalogDraft] = useState("");
   const [mockSourceLabel, setMockSourceLabel] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const filesRef = useRef<UploadFileItem[]>([]);
   const generateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const catalogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const MIN_TEXTAREA_HEIGHT = isMaximized ? 420 : 60;
   const MAX_TEXTAREA_HEIGHT = isMaximized ? 640 : 320;
@@ -284,9 +454,6 @@ export function AgentCommandCenter() {
       if (generateTimerRef.current) {
         clearTimeout(generateTimerRef.current);
       }
-      if (catalogTimerRef.current) {
-        clearTimeout(catalogTimerRef.current);
-      }
       for (const file of filesRef.current) {
         if (file.previewUrl) {
           URL.revokeObjectURL(file.previewUrl);
@@ -297,25 +464,12 @@ export function AgentCommandCenter() {
 
   const canStartGenerate = files.length > 0 || prompt.trim().length > 0;
 
-  function parseListInput(raw: string): Array<string> {
-    return raw
-      .split(/[\n,，]/)
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
-  }
-
   function stopGenerating() {
     if (generateTimerRef.current) {
       clearTimeout(generateTimerRef.current);
       generateTimerRef.current = null;
     }
-    if (catalogTimerRef.current) {
-      clearTimeout(catalogTimerRef.current);
-      catalogTimerRef.current = null;
-    }
-    setIsCatalogGenerating(false);
     setIsEditingQuestion(false);
-    setIsEditingCatalog(false);
     setGenerateStatus("stopped");
   }
 
@@ -325,45 +479,39 @@ export function AgentCommandCenter() {
     }
     setGenerateStatus("generating");
     setQuestionMarkdown("");
-    setRecommendedCatalog([]);
-    setGeneratedCatalog([]);
-    setIsCatalogGenerating(false);
+    setCatalogOptions([]);
+    setExistingCatalogCandidates([]);
+    setSelectedCatalogActionId(null);
+    setSelectedExistingCatalog("");
+    setNewCatalogInput("");
     setIsEditingQuestion(false);
-    setIsEditingCatalog(false);
     setQuestionDraft("");
-    setCatalogDraft("");
     setMockSourceLabel(null);
 
     const mock = getNextUploadMock();
     const delayMs = 1200 + Math.floor(Math.random() * 800);
 
     generateTimerRef.current = setTimeout(() => {
+      const nextCatalogOptions = buildCatalogActions(
+        mock.output.recommendedCatalog,
+      );
+      const defaultCatalogOption = nextCatalogOptions[0];
+      const nextExistingCatalogs = mock.output.recommendedCatalog;
+      const defaultExistingCatalog = nextExistingCatalogs[0] ?? "";
+      const createOption = nextCatalogOptions.find(
+        (option) => option.type === "create-new",
+      );
       setMockSourceLabel(mock.input.sourceLabel);
       setQuestionMarkdown(mock.output.questionMarkdown);
-      setRecommendedCatalog(mock.output.recommendedCatalog);
+      setCatalogOptions(nextCatalogOptions);
+      setExistingCatalogCandidates(nextExistingCatalogs);
+      setSelectedCatalogActionId(defaultCatalogOption?.id ?? null);
+      setSelectedExistingCatalog(defaultExistingCatalog);
+      setNewCatalogInput(createOption?.suggestion ?? "");
       setQuestionDraft(mock.output.questionMarkdown);
-      setCatalogDraft(mock.output.recommendedCatalog.join("\n"));
       setGenerateStatus("done");
       generateTimerRef.current = null;
     }, delayMs);
-  }
-
-  function handleGenerateCatalog() {
-    if (isCatalogGenerating) return;
-    setIsCatalogGenerating(true);
-    if (catalogTimerRef.current) {
-      clearTimeout(catalogTimerRef.current);
-    }
-    catalogTimerRef.current = setTimeout(() => {
-      const base = recommendedCatalog[0]?.split("/")[0] ?? "通用复习";
-      setGeneratedCatalog([
-        `${base}/专题训练`,
-        `${base}/错题回顾`,
-        `${base}/综合提升`,
-      ]);
-      setIsCatalogGenerating(false);
-      catalogTimerRef.current = null;
-    }, 900);
   }
 
   function handleGenerateClick() {
@@ -632,186 +780,34 @@ export function AgentCommandCenter() {
                 setQuestionMarkdown(questionDraft.trim());
                 setIsEditingQuestion(false);
               }}
+              catalogOptions={catalogOptions}
+              existingCatalogCandidates={existingCatalogCandidates}
+              selectedCatalogActionId={selectedCatalogActionId}
+              selectedExistingCatalog={selectedExistingCatalog}
+              newCatalogInput={newCatalogInput}
+              onSelectCatalogAction={(id) => {
+                setSelectedCatalogActionId(id);
+              }}
+              onSelectExistingCatalog={(value) => {
+                setSelectedExistingCatalog(value);
+              }}
+              onNewCatalogInputChange={(value) => {
+                setNewCatalogInput(value);
+              }}
+              onConfirmCatalogAction={() => {
+                const selectedOption =
+                  catalogOptions.find(
+                    (option) => option.id === selectedCatalogActionId,
+                  ) ?? null;
+                const effectiveCatalogValue =
+                  selectedOption?.type === "save-existing"
+                    ? selectedExistingCatalog
+                    : newCatalogInput;
+                if (!selectedCatalogActionId || !effectiveCatalogValue.trim()) {
+                  return;
+                }
+              }}
             />
-          </Flex>
-          <Flex
-            direction="column"
-            gap="1"
-            style={{
-              background: "#f8fafc",
-              border: "1px dashed #d5dcea",
-              borderRadius: 12,
-              padding: "10px 12px",
-            }}
-          >
-            <Flex justify="between" align="center">
-              <Text size="2" weight="bold">
-                推荐目录
-              </Text>
-              {generateStatus === "done" ? (
-                <Flex gap="2">
-                  {isEditingCatalog ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const currentCatalogs =
-                            generatedCatalog.length > 0
-                              ? generatedCatalog
-                              : recommendedCatalog;
-                          setCatalogDraft(currentCatalogs.join("\n"));
-                          setIsEditingCatalog(false);
-                        }}
-                        aria-label="取消编辑推荐目录"
-                        style={{
-                          border: "1px solid #d1d5db",
-                          borderRadius: 6,
-                          width: 26,
-                          height: 22,
-                          padding: 0,
-                          background: "#fff",
-                          color: "#4b5563",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Cross2Icon />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const parsed = parseListInput(catalogDraft);
-                          setRecommendedCatalog(parsed);
-                          setGeneratedCatalog([]);
-                          setIsEditingCatalog(false);
-                        }}
-                        aria-label="保存推荐目录编辑"
-                        style={{
-                          border: "1px solid #bfdbfe",
-                          borderRadius: 6,
-                          width: 26,
-                          height: 22,
-                          padding: 0,
-                          background: "#eff6ff",
-                          color: "#1d4ed8",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <CheckIcon />
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const currentCatalogs =
-                          generatedCatalog.length > 0
-                            ? generatedCatalog
-                            : recommendedCatalog;
-                        setCatalogDraft(currentCatalogs.join("\n"));
-                        setIsEditingCatalog(true);
-                      }}
-                      aria-label="编辑推荐目录"
-                      style={{
-                        border: "1px solid #d1d5db",
-                        borderRadius: 6,
-                        width: 26,
-                        height: 22,
-                        padding: 0,
-                        background: "#fff",
-                        color: "#4b5563",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Pencil2Icon />
-                    </button>
-                  )}
-                </Flex>
-              ) : null}
-            </Flex>
-            {generateStatus === "generating" ? (
-              <Text size="1" color="gray">
-                正在模拟推荐目录...
-              </Text>
-            ) : null}
-            {generateStatus === "stopped" ? (
-              <Text size="1" color="gray">
-                已停止目录推荐。
-              </Text>
-            ) : null}
-            {generateStatus === "done" && isEditingCatalog ? (
-              <textarea
-                value={catalogDraft}
-                onChange={(event) => setCatalogDraft(event.target.value)}
-                placeholder="每行一个目录，或使用逗号分隔"
-                style={{
-                  width: "100%",
-                  minHeight: 84,
-                  border: "1px solid #dbe1ea",
-                  borderRadius: 8,
-                  padding: "8px 10px",
-                  font: "inherit",
-                  lineHeight: 1.5,
-                  resize: "vertical",
-                }}
-              />
-            ) : null}
-            {generateStatus === "done" &&
-            !isEditingCatalog &&
-            recommendedCatalog.length > 0 ? (
-              <Flex direction="column" gap="1">
-                <Text size="1" color="gray">
-                  已有目录优先推荐：
-                </Text>
-                <Flex gap="2" wrap="wrap">
-                  {recommendedCatalog.map((catalog) => (
-                    <Badge key={catalog} color="green" variant="soft">
-                      {catalog}
-                    </Badge>
-                  ))}
-                </Flex>
-              </Flex>
-            ) : null}
-            {generateStatus === "done" && recommendedCatalog.length === 0 ? (
-              <Text size="1" color="gray">
-                暂无合适的已有目录。
-              </Text>
-            ) : null}
-            {generateStatus === "done" && !isEditingCatalog ? (
-              <Flex direction="column" gap="2" mt="1">
-                <button
-                  type="button"
-                  onClick={handleGenerateCatalog}
-                  disabled={isCatalogGenerating}
-                  style={{
-                    width: "fit-content",
-                    border: "1px solid #c7d2fe",
-                    background: isCatalogGenerating ? "#e5e7eb" : "#eef2ff",
-                    color: "#374151",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    lineHeight: 1,
-                    padding: "6px 10px",
-                  }}
-                >
-                  {isCatalogGenerating ? "生成中..." : "生成目录"}
-                </button>
-                {generatedCatalog.length > 0 ? (
-                  <Flex gap="2" wrap="wrap">
-                    {generatedCatalog.map((catalog) => (
-                      <Badge key={catalog} color="blue" variant="soft">
-                        {catalog}
-                      </Badge>
-                    ))}
-                  </Flex>
-                ) : null}
-              </Flex>
-            ) : null}
           </Flex>
         </Flex>
       ) : null}
